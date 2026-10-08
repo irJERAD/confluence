@@ -1,0 +1,1685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Confluence</title>
+<meta name="description" content="A utility for serendipity — capture the moments that feel like more than coincidence.">
+<meta name="theme-color" content="#241e2b">
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Confluence">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&family=Work+Sans:wght@400;500;600&display=swap');
+
+  :root {
+    --bg-1: oklch(0.24 0.045 300);
+    --bg-2: oklch(0.27 0.05 330);
+    --bg-3: oklch(0.32 0.065 30);
+    --ink: oklch(0.96 0.015 70);
+    --ink-dim: oklch(0.96 0.015 70 / 0.55);
+    --ink-faint: oklch(0.96 0.015 70 / 0.4);
+    --card: oklch(0.97 0.012 70);
+    --card-ink: oklch(0.28 0.03 50);
+    --card-ink-dim: oklch(0.28 0.03 50 / 0.55);
+    --accent-1: oklch(0.8 0.1 75);
+    --accent-2: oklch(0.72 0.11 45);
+    --echo: 250;
+    --resolution: 145;
+    --recurrence: 45;
+    --convergence: 340;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    min-height: 100vh;
+    background: linear-gradient(165deg, var(--bg-1) 0%, var(--bg-2) 45%, var(--bg-3) 100%);
+    background-attachment: fixed;
+    font-family: 'Work Sans', sans-serif;
+    color: var(--ink);
+    display: flex;
+    justify-content: center;
+  }
+  a { color: var(--accent-1); }
+  a:hover { color: var(--accent-2); }
+
+  #app {
+    width: 100%;
+    max-width: 460px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+
+  .serif { font-family: 'Source Serif 4', serif; }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    padding: 44px 24px 12px 24px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+  }
+  .topbar h1 {
+    font-family: 'Source Serif 4', serif;
+    font-weight: 500;
+    font-size: 24px;
+    margin: 0;
+  }
+  .topbar .sub { font-size: 13px; color: var(--ink-dim); margin: 3px 0 0 0; }
+  .icon-btn {
+    width: 38px; height: 38px; border-radius: 12px;
+    background: oklch(1 0 0 / 0.08);
+    border: 1px solid oklch(1 0 0 / 0.12);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+  .icon-btn:hover { background: oklch(1 0 0 / 0.14); }
+  .icon-btn.primary {
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    border: none;
+  }
+
+  /* ---------- Home ---------- */
+  .wordmark {
+    font-family: 'Source Serif 4', serif;
+    font-size: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-1);
+    margin: 0 24px;
+  }
+
+  .capture-row {
+    margin: 14px 20px 20px 20px;
+    display: flex;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .capture-btn {
+    flex: 1;
+    min-width: 0;
+    padding: 16px 20px;
+    border-radius: 18px;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: oklch(0.2 0.03 50);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 24px oklch(0.3 0.08 50 / 0.35);
+    cursor: pointer;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+  }
+  .capture-btn:hover { filter: brightness(1.04); }
+  .capture-btn .plus-circle {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: oklch(0.2 0.03 50 / 0.14);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .capture-btn .label { display: flex; flex-direction: column; gap: 1px; }
+  .capture-btn .t1 { font-weight: 600; font-size: 15px; }
+  .capture-btn .t2 { font-size: 12px; opacity: 0.75; }
+
+  .quick-add-btn {
+    flex-shrink: 0;
+    width: 58px;
+    border-radius: 18px;
+    background: oklch(1 0 0 / 0.08);
+    border: 1px solid oklch(1 0 0 / 0.16);
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+  }
+  .quick-add-btn:hover { background: oklch(1 0 0 / 0.14); }
+
+  .needs-review-pill {
+    display: inline-block;
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: oklch(0.5 0.12 45);
+    background: oklch(0.9 0.05 45);
+    padding: 2px 7px;
+    border-radius: 999px;
+    margin-left: 4px;
+    vertical-align: middle;
+  }
+
+  .feed-label {
+    padding: 4px 24px 10px 24px;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+  }
+
+  .feed { padding: 0 20px 100px 20px; display: flex; flex-direction: column; gap: 12px; }
+
+  .empty-state {
+    margin: 20px 20px;
+    padding: 28px 20px;
+    border-radius: 18px;
+    border: 1px dashed oklch(1 0 0 / 0.2);
+    text-align: center;
+    color: var(--ink-dim);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .card {
+    background: var(--card);
+    color: var(--card-ink);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    cursor: pointer;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+    width: 100%;
+  }
+  .card:hover { filter: brightness(0.99); }
+  .type-icon {
+    width: 34px; height: 34px; border-radius: 10px;
+    flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .card .body { flex: 1; min-width: 0; }
+  .card .type-name {
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em;
+    font-weight: 600; margin: 0 0 3px 0;
+  }
+  .card .summary {
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px; line-height: 1.35; margin: 0;
+  }
+  .card .date { font-size: 11px; color: var(--card-ink-dim); margin-top: 6px; }
+
+  /* type color helpers -- lightness/chroma fixed, hue varies (see --echo etc.) */
+  .swatch-bg { background: oklch(0.9 0.035 var(--hue)); }
+  .swatch-ink { color: oklch(0.5 0.09 var(--hue)); }
+  .swatch-icon { stroke: oklch(0.5 0.09 var(--hue)); }
+
+  .navbar {
+    position: sticky;
+    bottom: 0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 12px 12px 22px 12px;
+    background: oklch(0.2 0.04 300 / 0.7);
+    backdrop-filter: blur(8px);
+    border-top: 1px solid oklch(1 0 0 / 0.08);
+    margin-top: auto;
+  }
+  .nav-item {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    background: none; border: none; cursor: pointer; color: inherit; font-family: inherit;
+  }
+  .nav-item span { font-size: 10px; color: var(--ink-dim); }
+  .nav-item.active span { color: var(--accent-1); }
+  .nav-item.active svg { stroke: var(--accent-1) !important; }
+
+  /* ---------- Capture flow ---------- */
+  .screen { display: flex; flex-direction: column; min-height: 100vh; padding-bottom: 30px; }
+  .flow-top {
+    display: flex; align-items: center; gap: 14px;
+    padding: 44px 20px 8px 20px;
+  }
+  .back-btn { cursor: pointer; display: flex; background: none; border: none; padding: 4px; }
+  .step-label { font-size: 12px; color: var(--ink-dim); }
+
+  .progress {
+    margin: 14px 24px 4px 24px;
+    height: 4px; border-radius: 2px;
+    background: oklch(1 0 0 / 0.12);
+    overflow: hidden;
+  }
+  .progress .fill {
+    height: 100%;
+    background: var(--accent-1);
+    border-radius: 2px;
+    transition: width 0.25s ease;
+  }
+
+  .prompt { padding: 20px 24px 8px 24px; }
+  .prompt h2 { font-family: 'Source Serif 4', serif; font-weight: 500; font-size: 22px; line-height: 1.3; margin: 0; }
+
+  .types {
+    padding: 16px 20px 4px 20px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  .type-card {
+    border-radius: 14px; padding: 14px;
+    display: flex; flex-direction: column; gap: 8px;
+    border: 1px solid oklch(1 0 0 / 0.1);
+    background: oklch(1 0 0 / 0.04);
+    cursor: pointer;
+    text-align: left;
+    color: inherit;
+    font-family: inherit;
+  }
+  .type-card .icon-wrap {
+    width: 30px; height: 30px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    background: oklch(1 0 0 / 0.9);
+  }
+  .type-card .name { font-weight: 600; font-size: 14px; }
+  .type-card .desc { font-size: 11.5px; color: var(--ink-dim); line-height: 1.3; }
+  .type-card.selected { background: oklch(0.9 0.035 var(--hue)); border-color: oklch(0.78 0.09 var(--hue)); }
+  .type-card.selected .name, .type-card.selected .desc { color: oklch(0.3 0.05 var(--hue)); }
+  .type-card.not-sure { grid-column: span 2; flex-direction: row; align-items: center; justify-content: center; gap: 8px; padding: 12px; }
+  .type-card.not-sure .name { font-size: 13px; font-weight: 500; opacity: 0.85; }
+
+  .field-panel {
+    flex: 1;
+    margin: 14px 20px 0 20px;
+    padding: 18px;
+    border-radius: 18px;
+    background: var(--card);
+    color: var(--card-ink);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .field-panel .tag {
+    align-self: flex-start;
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    color: oklch(0.5 0.09 var(--hue));
+    background: oklch(0.9 0.035 var(--hue));
+    padding: 4px 10px; border-radius: 999px;
+  }
+  .field-panel h3 { font-family: 'Source Serif 4', serif; font-weight: 500; font-size: 16px; line-height: 1.4; margin: 0; }
+  .field-panel textarea, .field-panel input[type=text] {
+    width: 100%;
+    border: 1px solid var(--card-ink-dim);
+    border-radius: 10px;
+    background: oklch(1 0 0 / 0.5);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 14px;
+    color: var(--card-ink);
+    padding: 10px 12px;
+    outline: none;
+  }
+  .field-panel textarea { resize: vertical; min-height: 90px; line-height: 1.5; }
+  .field-panel label.small { font-size: 12px; font-weight: 600; color: var(--card-ink-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+
+  .charge-row { display: flex; gap: 10px; align-items: center; }
+  .charge-dot {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: oklch(0.85 0.02 50);
+    cursor: pointer;
+    border: none;
+  }
+  .charge-dot.filled { background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); }
+
+  .cta-row { padding: 16px 20px 6px 20px; display: flex; gap: 10px; }
+  .btn {
+    flex: 1; padding: 14px; border-radius: 14px; text-align: center;
+    font-weight: 600; font-size: 14px; cursor: pointer; border: none; font-family: inherit;
+  }
+  .btn.ghost { background: oklch(1 0 0 / 0.08); border: 1px solid oklch(1 0 0 / 0.14); color: var(--ink); }
+  .btn.solid { background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); color: oklch(0.2 0.03 50); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+
+  /* ---------- Detail ---------- */
+  .detail-top {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 44px 20px 4px 20px;
+  }
+  .pill {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    color: oklch(0.5 0.09 var(--hue));
+    background: oklch(0.9 0.035 var(--hue));
+    padding: 5px 12px; border-radius: 999px;
+  }
+  .detail-date { font-size: 12px; color: var(--ink-dim); }
+  .detail-content { padding: 18px 20px 0 20px; display: flex; flex-direction: column; gap: 16px; }
+  .detail-content h2.headline { font-family: 'Source Serif 4', serif; font-weight: 500; font-size: 25px; line-height: 1.3; margin: 0; }
+  .detail-content .context { font-size: 14.5px; line-height: 1.6; color: var(--ink-dim); margin: 0; white-space: pre-wrap; }
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); margin: 0 0 8px 0; }
+  .chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 7px 12px; border-radius: 999px; background: oklch(1 0 0 / 0.08); border: 1px solid oklch(1 0 0 / 0.12); font-size: 13px; }
+  .chip.person { background: oklch(0.9 0.035 250); color: oklch(0.35 0.06 250); border: none; }
+  .charge-card { background: var(--card); color: var(--card-ink); border-radius: 16px; padding: 16px; }
+  .charge-card .section-label { color: var(--card-ink-dim); }
+  .charge-dots { display: flex; gap: 8px; }
+  .charge-dots .dot { width: 24px; height: 24px; border-radius: 50%; background: oklch(0.85 0.02 50); }
+  .charge-dots .dot.filled { background: linear-gradient(135deg, var(--accent-1), var(--accent-2)); }
+  .bottom-row { padding: 20px 20px 6px 20px; display: flex; gap: 10px; }
+  .btn.danger { background: oklch(0.3 0.06 25); color: oklch(0.95 0.02 25); }
+
+  @media (max-width: 420px) {
+    .topbar, .flow-top, .detail-top { padding-left: 18px; padding-right: 18px; }
+  }
+
+  /* ---------- Auth / loading / error / config screens ---------- */
+  .centered-screen {
+    flex: 1;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 28px;
+    text-align: center;
+    gap: 18px;
+  }
+  .centered-screen .mark {
+    font-family: 'Source Serif 4', serif;
+    font-size: 15px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent-1);
+  }
+  .centered-screen h2 { font-family: 'Source Serif 4', serif; font-weight: 500; font-size: 22px; margin: 0; }
+  .centered-screen p.msg { font-size: 13.5px; color: var(--ink-dim); line-height: 1.6; margin: 0; max-width: 320px; }
+  .spinner-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--accent-1);
+    animation: pulse 1.1s ease-in-out infinite;
+  }
+  @keyframes pulse { 0%, 100% { opacity: 0.3; transform: scale(0.85); } 50% { opacity: 1; transform: scale(1); } }
+
+  .auth-card {
+    width: 100%;
+    max-width: 320px;
+    background: var(--card);
+    color: var(--card-ink);
+    border-radius: 18px;
+    padding: 22px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    text-align: left;
+  }
+  .auth-card h2 { font-family: 'Source Serif 4', serif; font-weight: 500; font-size: 19px; margin: 0 0 2px 0; }
+  .auth-card label.small { font-size: 11.5px; font-weight: 600; color: var(--card-ink-dim); text-transform: uppercase; letter-spacing: 0.05em; }
+  .auth-card input {
+    width: 100%;
+    border: 1px solid var(--card-ink-dim);
+    border-radius: 10px;
+    background: oklch(1 0 0 / 0.6);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 14px;
+    color: var(--card-ink);
+    padding: 10px 12px;
+    outline: none;
+  }
+  .auth-card .error-msg { font-size: 12.5px; color: oklch(0.5 0.15 25); min-height: 1em; }
+  .auth-card .switch-link { font-size: 12.5px; color: var(--card-ink-dim); text-align: center; margin-top: 2px; cursor: pointer; text-decoration: underline; }
+  .auth-card .btn.solid { width: 100%; margin-top: 4px; }
+
+  code.inline {
+    background: oklch(1 0 0 / 0.08);
+    border-radius: 6px;
+    padding: 2px 6px;
+    font-size: 12px;
+  }
+
+  /* ---------- Quick add (voice) ---------- */
+  .review-banner {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: oklch(0.9 0.05 45 / 0.16);
+    border: 1px solid oklch(0.8 0.08 45 / 0.4);
+    color: oklch(0.85 0.06 55);
+    font-size: 12.5px;
+    line-height: 1.4;
+  }
+  .review-banner svg { flex-shrink: 0; stroke: oklch(0.8 0.1 55); }
+
+  .record-screen {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 22px;
+    padding: 20px 28px;
+    text-align: center;
+  }
+  .record-pulse {
+    width: 92px; height: 92px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: oklch(0.2 0.03 50);
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 0 0 oklch(0.78 0.1 60 / 0.5);
+    animation: record-ring 1.6s ease-out infinite;
+  }
+  @keyframes record-ring {
+    0%   { box-shadow: 0 0 0 0 oklch(0.78 0.1 60 / 0.45); }
+    70%  { box-shadow: 0 0 0 22px oklch(0.78 0.1 60 / 0); }
+    100% { box-shadow: 0 0 0 0 oklch(0.78 0.1 60 / 0); }
+  }
+  .record-hint { font-size: 13.5px; color: var(--ink-dim); margin: 0; }
+  .live-transcript {
+    font-family: 'Source Serif 4', serif;
+    font-size: 17px;
+    line-height: 1.5;
+    color: var(--ink);
+    margin: 0;
+    min-height: 3em;
+  }
+
+  /* ---------- The Weave ---------- */
+  .weave-section {
+    margin: 0 20px 18px 20px;
+    background: var(--card);
+    color: var(--card-ink);
+    border-radius: 18px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .weave-section .section-label { color: var(--card-ink-dim); margin: 0; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-row .bar-label { flex: 0 0 92px; font-size: 12.5px; font-weight: 600; }
+  .bar-row .bar-track { flex: 1; height: 10px; border-radius: 6px; background: oklch(0.88 0.015 50); overflow: hidden; }
+  .bar-row .bar-fill { height: 100%; border-radius: 6px; background: oklch(0.6 0.1 var(--hue)); }
+  .bar-row .bar-count { flex: 0 0 20px; text-align: right; font-size: 12px; color: var(--card-ink-dim); }
+  .weave-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .weave-chip {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: 999px;
+    background: oklch(0.92 0.025 50); color: oklch(0.35 0.05 50);
+    font-size: 13px;
+  }
+  .weave-chip .count { font-size: 11px; opacity: 0.65; }
+  .weave-empty { font-size: 13.5px; color: var(--card-ink-dim); line-height: 1.6; margin: 0; }
+</style>
+</head>
+<body>
+  <div id="app"></div>
+
+<script type="module">
+"use strict";
+
+/* ============================= SUPABASE CONFIG =============================
+   Fill these in from your Supabase project: Project Settings > API.
+   The anon key is safe to ship in client code — it only grants what the
+   Row Level Security policies in backend/schema.sql allow (each user can
+   only ever see and edit their own rows).
+============================================================================ */
+
+const SUPABASE_URL = "YOUR_SUPABASE_PROJECT_URL";       // e.g. https://abcdefghijk.supabase.co
+const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY";      // Project Settings > API > anon public key
+
+const CONFIGURED = !SUPABASE_URL.startsWith("YOUR_") && !SUPABASE_ANON_KEY.startsWith("YOUR_");
+
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const supabase = CONFIGURED ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
+const TYPES = {
+  echo: {
+    name: "Echo",
+    hue: 250,
+    desc: "Someone or something surfaced right after you thought of it",
+    prompt: "Who or what did this involve, and when had you last thought of or mentioned them?",
+    placeholder: "We'd talked about them out of nowhere a few days ago, and then...",
+    icon: '<circle cx="12" cy="12" r="2.5"/><circle cx="12" cy="12" r="7" opacity="0.55"/><circle cx="12" cy="12" r="10.5" opacity="0.3"/>'
+  },
+  resolution: {
+    name: "Resolution",
+    hue: 145,
+    desc: "Something answered a decision you were sitting with",
+    prompt: "What decision or question were you sitting with?",
+    placeholder: "I'd been going back and forth about... and then this happened.",
+    icon: '<path d="M4 13l4 4L20 7"/>'
+  },
+  recurrence: {
+    name: "Recurrence",
+    hue: 45,
+    desc: "A symbol, number, or phrase keeps reappearing",
+    prompt: "What's the symbol, number, or phrase — and where else have you seen it?",
+    placeholder: "It keeps showing up: on the clock, in a book, on a receipt...",
+    icon: '<path d="M17 2l4 4-4 4M21 6H9a5 5 0 000 10h1M7 22l-4-4 4-4M3 18h12a5 5 0 000-10h-1"/>'
+  },
+  convergence: {
+    name: "Convergence",
+    hue: 340,
+    desc: "Separate threads lined up at once",
+    prompt: "What threads came together?",
+    placeholder: "A book, a conversation, and something I overheard all pointed the same way.",
+    icon: '<path d="M4 4l7 8M20 4l-7 8M11 12v8"/>'
+  },
+  unsorted: {
+    name: "Unsorted",
+    hue: 260,
+    desc: "Not sure yet — sort it later",
+    prompt: "What happened?",
+    placeholder: "Something felt significant. I'll make sense of it later.",
+    icon: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 015 .3c0 1.7-2.5 1.7-2.5 3.4M12 17h.01"/>'
+  }
+};
+
+let cache = []; // most recent loadEntries() result, newest first — lets getEntry() read synchronously
+
+function rowToEntry(row) {
+  return {
+    id: row.id,
+    timestamp: new Date(row.created_at).getTime(),
+    type: row.type,
+    summary: row.summary,
+    context: row.context || "",
+    people: row.people || [],
+    tags: row.tags || [],
+    charge: row.charge || 0,
+    threadId: row.thread_id || null,
+    needsReview: row.needs_review || false
+  };
+}
+
+async function loadEntries() {
+  const { data, error } = await supabase
+    .from("confluences")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  cache = data.map(rowToEntry);
+  return cache;
+}
+
+async function addEntry(entry) {
+  const { data, error } = await supabase
+    .from("confluences")
+    .insert({
+      type: entry.type,
+      summary: entry.summary,
+      context: entry.context,
+      people: entry.people,
+      tags: entry.tags,
+      charge: entry.charge,
+      needs_review: entry.needsReview || false
+    })
+    .select()
+    .single();
+  if (error) throw error;
+  const saved = rowToEntry(data);
+  cache = [saved, ...cache];
+  return saved;
+}
+
+async function deleteEntry(id) {
+  const { error } = await supabase.from("confluences").delete().eq("id", id);
+  if (error) throw error;
+  cache = cache.filter(e => e.id !== id);
+}
+
+async function updateEntry(id, patch) {
+  const { data, error } = await supabase
+    .from("confluences")
+    .update({
+      type: patch.type,
+      summary: patch.summary,
+      context: patch.context,
+      people: patch.people,
+      tags: patch.tags,
+      charge: patch.charge,
+      needs_review: false // saving through the edit screen counts as "finished"
+    })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  const updated = rowToEntry(data);
+  cache = cache.map(e => (e.id === id ? updated : e));
+  return updated;
+}
+
+function getEntry(id) {
+  return cache.find(e => e.id === id);
+}
+
+/* ============================= AUTH ============================= */
+
+let session = null;
+
+async function initAuth() {
+  if (!CONFIGURED) return;
+  const { data } = await supabase.auth.getSession();
+  session = data.session;
+  supabase.auth.onAuthStateChange((_event, newSession) => {
+    session = newSession;
+    navigate({ view: "home" });
+  });
+}
+
+async function signIn(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
+}
+
+async function signUp(email, password) {
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
+}
+
+async function signOut() {
+  await supabase.auth.signOut();
+}
+
+/* ============================= HELPERS ============================= */
+
+function fmtDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  if (sameDay) {
+    return "Today, " + d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  }
+  const days = Math.round((now - d) / 86400000);
+  if (days === 1) return "Yesterday";
+  if (days < 7) return d.toLocaleDateString([], { weekday: "long" });
+  return d.toLocaleDateString([], { month: "short", day: "numeric" });
+}
+
+function el(html) {
+  const t = document.createElement("template");
+  t.innerHTML = html.trim();
+  return t.content.firstElementChild;
+}
+
+function iconSvg(pathMarkup, size = 18) {
+  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${pathMarkup}</svg>`;
+}
+
+/* ============================= APP STATE / ROUTER ============================= */
+
+const app = document.getElementById("app");
+
+let route = { view: "home" };
+
+async function navigate(next) {
+  route = next;
+  window.scrollTo(0, 0);
+  await render();
+}
+
+async function render() {
+  app.innerHTML = "";
+
+  if (!CONFIGURED) {
+    app.appendChild(renderConfigNeeded());
+    return;
+  }
+  if (!session) {
+    app.appendChild(renderAuth());
+    return;
+  }
+
+  if (route.view === "home") {
+    app.appendChild(renderCenteredMessage({ loading: true, text: "Gathering your confluences…" }));
+    try {
+      const entries = await loadEntries();
+      app.innerHTML = "";
+      app.appendChild(renderHome(entries));
+    } catch (err) {
+      app.innerHTML = "";
+      app.appendChild(renderErrorScreen(err, () => navigate({ view: "home" })));
+    }
+  } else if (route.view === "capture") {
+    app.appendChild(renderCapture());
+  } else if (route.view === "detail") {
+    app.appendChild(renderDetail(getEntry(route.id), route.id));
+  } else if (route.view === "edit") {
+    const entry = getEntry(route.id);
+    if (!entry) { app.appendChild(renderDetail(entry, route.id)); return; }
+    app.appendChild(renderEdit(entry));
+  } else if (route.view === "quickadd") {
+    app.appendChild(renderQuickAdd());
+  } else if (route.view === "weave") {
+    app.appendChild(renderCenteredMessage({ loading: true, text: "Looking for patterns…" }));
+    try {
+      const entries = await loadEntries();
+      app.innerHTML = "";
+      app.appendChild(renderWeave(entries));
+    } catch (err) {
+      app.innerHTML = "";
+      app.appendChild(renderErrorScreen(err, () => navigate({ view: "weave" })));
+    }
+  }
+}
+
+function renderCenteredMessage({ loading, text }) {
+  return el(`
+    <div class="centered-screen">
+      ${loading ? '<div class="spinner-dot"></div>' : ""}
+      <p class="msg">${escapeHtml(text)}</p>
+    </div>
+  `);
+}
+
+function renderErrorScreen(err, onRetry) {
+  console.error(err);
+  const wrap = el(`
+    <div class="centered-screen">
+      <p class="mark">Confluence</p>
+      <h2>Couldn't reach your data</h2>
+      <p class="msg">${escapeHtml(err.message || String(err))}</p>
+      <button class="btn solid" style="width:160px">Try again</button>
+    </div>
+  `);
+  wrap.querySelector("button").addEventListener("click", onRetry);
+  return wrap;
+}
+
+function renderConfigNeeded() {
+  return el(`
+    <div class="centered-screen">
+      <p class="mark">Confluence</p>
+      <h2>Almost there</h2>
+      <p class="msg">This app needs a Supabase project to save your confluences. Open <code class="inline">index.html</code>, set <code class="inline">SUPABASE_URL</code> and <code class="inline">SUPABASE_ANON_KEY</code> near the top of the script, and reload.</p>
+    </div>
+  `);
+}
+
+function renderAuth() {
+  const state = { mode: "signin", email: "", password: "", error: "", busy: false };
+  const wrap = el(`<div class="centered-screen"></div>`);
+
+  function draw() {
+    wrap.innerHTML = "";
+    wrap.appendChild(el(`<p class="mark">Confluence</p>`));
+
+    const card = el(`
+      <div class="auth-card">
+        <h2>${state.mode === "signin" ? "Welcome back" : "Create your account"}</h2>
+        <label class="small">Email</label>
+        <input type="email" id="auth-email" autocomplete="email" value="${escapeAttr(state.email)}">
+        <label class="small">Password</label>
+        <input type="password" id="auth-password" autocomplete="${state.mode === "signin" ? "current-password" : "new-password"}" value="${escapeAttr(state.password)}">
+        <p class="error-msg">${escapeHtml(state.error)}</p>
+        <button class="btn solid" ${state.busy ? "disabled" : ""}>${state.busy ? "One moment…" : (state.mode === "signin" ? "Sign in" : "Sign up")}</button>
+        <p class="switch-link">${state.mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in"}</p>
+      </div>
+    `);
+    card.querySelector("#auth-email").addEventListener("input", e => { state.email = e.target.value; });
+    card.querySelector("#auth-password").addEventListener("input", e => { state.password = e.target.value; });
+    card.querySelector(".switch-link").addEventListener("click", () => {
+      state.mode = state.mode === "signin" ? "signup" : "signin";
+      state.error = "";
+      draw();
+    });
+    card.querySelector(".btn.solid").addEventListener("click", async () => {
+      if (!state.email || !state.password) { state.error = "Enter an email and password."; draw(); return; }
+      state.busy = true; state.error = ""; draw();
+      try {
+        if (state.mode === "signin") await signIn(state.email, state.password);
+        else {
+          await signUp(state.email, state.password);
+          state.error = "Check your email to confirm your account, then sign in.";
+          state.mode = "signin";
+        }
+      } catch (err) {
+        state.error = err.message || String(err);
+      }
+      state.busy = false;
+      draw();
+    });
+    wrap.appendChild(card);
+  }
+
+  draw();
+  return wrap;
+}
+
+/* ============================= HOME ============================= */
+
+function renderHome(entries) {
+  const wrap = el(`<div class="screen"></div>`);
+
+  const top = el(`
+    <div>
+      <p class="wordmark">Confluence</p>
+      <div class="topbar">
+        <div>
+          <h1>Good ${greetingWord()}, Jerad</h1>
+          <p class="sub">${entries.length} confluence${entries.length === 1 ? "" : "s"} logged &middot; ${recentCountLabel(entries)}</p>
+        </div>
+        <button class="icon-btn" title="Sign out">${iconSvg('<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 17)}</button>
+      </div>
+    </div>
+  `);
+  top.querySelector(".icon-btn").addEventListener("click", async () => {
+    if (confirm("Sign out of Confluence?")) await signOut();
+  });
+  wrap.appendChild(top);
+
+  const captureRow = el(`<div class="capture-row"></div>`);
+  const captureBtn = el(`
+    <button class="capture-btn">
+      <span class="plus-circle">${iconSvg('<path d="M12 5v14M5 12h14"/>', 16)}</span>
+      <span class="label">
+        <span class="t1">Capture a moment</span>
+        <span class="t2">Before it fades — takes under a minute</span>
+      </span>
+    </button>
+  `);
+  captureBtn.addEventListener("click", () => navigate({ view: "capture" }));
+  captureRow.appendChild(captureBtn);
+
+  const quickAddBtn = el(`
+    <button class="quick-add-btn" title="Quick add (voice)">
+      ${iconSvg('<rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0M12 17v4M9 21h6"/>', 20)}
+    </button>
+  `);
+  quickAddBtn.addEventListener("click", () => navigate({ view: "quickadd" }));
+  captureRow.appendChild(quickAddBtn);
+
+  wrap.appendChild(captureRow);
+
+  wrap.appendChild(el(`<p class="feed-label">Recent confluences</p>`));
+
+  const feed = el(`<div class="feed"></div>`);
+  if (entries.length === 0) {
+    feed.appendChild(el(`<div class="empty-state">Nothing logged yet.<br>The next time something lines up too well to be nothing — capture it.</div>`));
+  } else {
+    entries.forEach(entry => feed.appendChild(renderCard(entry)));
+  }
+  wrap.appendChild(feed);
+
+  wrap.appendChild(renderNav("home"));
+  return wrap;
+}
+
+function greetingWord() {
+  const h = new Date().getHours();
+  if (h < 12) return "morning";
+  if (h < 18) return "afternoon";
+  return "evening";
+}
+
+function recentCountLabel(entries) {
+  const week = Date.now() - 7 * 86400000;
+  const recent = entries.filter(e => e.timestamp >= week).length;
+  if (recent === 0) return "a quiet week";
+  return `${recent} this week`;
+}
+
+function renderCard(entry) {
+  const meta = TYPES[entry.type] || TYPES.unsorted;
+  const card = el(`
+    <button class="card" style="--hue:${meta.hue}">
+      <span class="type-icon swatch-bg swatch-icon">${iconSvg(entry.needsReview ? '<rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0M12 17v4M9 21h6"/>' : meta.icon)}</span>
+      <span class="body">
+        <p class="type-name swatch-ink">${meta.name}${entry.needsReview ? ' <span class="needs-review-pill">Needs detail</span>' : ""}</p>
+        <p class="summary">${escapeHtml(entry.summary)}</p>
+        <p class="date">${fmtDate(entry.timestamp)}</p>
+      </span>
+    </button>
+  `);
+  card.addEventListener("click", () => navigate({ view: entry.needsReview ? "edit" : "detail", id: entry.id }));
+  return card;
+}
+
+function renderNav(active) {
+  const items = [
+    { id: "home", label: "Home", path: '<path d="M3 11l9-7 9 7M5 10v10h14V10"/>' },
+    { id: "threads", label: "Threads", path: '<path d="M6 4h9l4 4v12H6z"/><path d="M9 12h6M9 16h6M9 8h3"/>' },
+    { id: "weave", label: "The Weave", path: '<circle cx="6" cy="6" r="2"/><circle cx="18" cy="7" r="2"/><circle cx="9" cy="17" r="2"/><circle cx="18" cy="17" r="2"/><path d="M7.6 6.9L16.6 7.1M8.4 8.1l7 8M15.6 7.9l-5.5 8.3"/>' },
+    { id: "settings", label: "Settings", path: '<circle cx="12" cy="12" r="3"/><path d="M19.4 13a7.97 7.97 0 000-2l2-1.5-2-3.5-2.4 1a8 8 0 00-1.7-1L15 3h-4l-.3 2.5a8 8 0 00-1.7 1l-2.4-1-2 3.5L6.6 11a8 8 0 000 2l-2 1.5 2 3.5 2.4-1a8 8 0 001.7 1L11 21h4l.3-2.5a8 8 0 001.7-1l2.4 1 2-3.5z"/>' }
+  ];
+  const nav = el(`<div class="navbar"></div>`);
+  items.forEach(it => {
+    const btn = el(`
+      <button class="nav-item${it.id === active ? " active" : ""}">
+        ${iconSvg(it.path, 20)}
+        <span>${it.label}</span>
+      </button>
+    `);
+    if (it.id === "home") btn.addEventListener("click", () => navigate({ view: "home" }));
+    else if (it.id === "weave") btn.addEventListener("click", () => navigate({ view: "weave" }));
+    else btn.addEventListener("click", () => alert(it.label + " isn't wired up in this prototype yet."));
+    nav.appendChild(btn);
+  });
+  return nav;
+}
+
+/* ============================= THE WEAVE ============================= */
+
+function renderWeave(entries) {
+  const wrap = el(`<div class="screen"></div>`);
+
+  const top = el(`
+    <div>
+      <p class="wordmark">Confluence</p>
+      <div class="topbar">
+        <div>
+          <h1>The Weave</h1>
+          <p class="sub">Patterns across ${entries.length} confluence${entries.length === 1 ? "" : "s"}</p>
+        </div>
+      </div>
+    </div>
+  `);
+  wrap.appendChild(top);
+
+  if (entries.length < 3) {
+    wrap.appendChild(el(`
+      <div class="weave-section">
+        <p class="weave-empty">Keep logging — once you've captured a few confluences, patterns in type, people, and tags will start surfacing here.</p>
+      </div>
+    `));
+    wrap.appendChild(renderNav("weave"));
+    return wrap;
+  }
+
+  // ---- by type ----
+  const typeCounts = {};
+  entries.forEach(e => { typeCounts[e.type] = (typeCounts[e.type] || 0) + 1; });
+  const maxTypeCount = Math.max(...Object.values(typeCounts));
+
+  const typeSection = el(`<div class="weave-section"><p class="section-label">By type</p></div>`);
+  Object.keys(TYPES).forEach(key => {
+    const count = typeCounts[key] || 0;
+    if (count === 0) return;
+    const meta = TYPES[key];
+    typeSection.appendChild(el(`
+      <div class="bar-row" style="--hue:${meta.hue}">
+        <span class="bar-label">${meta.name}</span>
+        <span class="bar-track"><span class="bar-fill" style="width:${Math.max(6, Math.round((count / maxTypeCount) * 100))}%"></span></span>
+        <span class="bar-count">${count}</span>
+      </div>
+    `));
+  });
+  wrap.appendChild(typeSection);
+
+  // ---- recurring people ----
+  wrap.appendChild(renderRecurrenceSection(
+    "People who keep showing up",
+    countAll(entries.map(e => e.people)),
+    "Nobody's come up more than once yet — once a name repeats, it'll surface here."
+  ));
+
+  // ---- recurring tags ----
+  wrap.appendChild(renderRecurrenceSection(
+    "Tags that keep recurring",
+    countAll(entries.map(e => e.tags)),
+    "No tag has repeated yet — recurring symbols, words, or themes will gather here."
+  ));
+
+  // ---- average charge ----
+  const charged = entries.filter(e => e.charge > 0);
+  if (charged.length) {
+    const avg = charged.reduce((sum, e) => sum + e.charge, 0) / charged.length;
+    const chargeSection = el(`
+      <div class="weave-section">
+        <p class="section-label">Average charge</p>
+        <div class="charge-dots"></div>
+        <p class="weave-empty">${avg.toFixed(1)} of 5, across ${charged.length} rated confluence${charged.length === 1 ? "" : "s"}.</p>
+      </div>
+    `);
+    const dots = chargeSection.querySelector(".charge-dots");
+    const rounded = Math.round(avg);
+    for (let i = 1; i <= 5; i++) dots.appendChild(el(`<div class="dot${rounded >= i ? " filled" : ""}"></div>`));
+    wrap.appendChild(chargeSection);
+  }
+
+  wrap.appendChild(renderNav("weave"));
+  return wrap;
+}
+
+function countAll(lists) {
+  const counts = {};
+  lists.flat().forEach(item => {
+    if (!item) return;
+    counts[item] = (counts[item] || 0) + 1;
+  });
+  return counts;
+}
+
+function renderRecurrenceSection(title, counts, emptyMsg) {
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]);
+  const repeats = sorted.filter(([, c]) => c > 1);
+  const section = el(`<div class="weave-section"><p class="section-label">${escapeHtml(title)}</p></div>`);
+
+  if (!sorted.length) {
+    section.appendChild(el(`<p class="weave-empty">${escapeHtml(emptyMsg)}</p>`));
+    return section;
+  }
+
+  const shown = (repeats.length ? repeats : sorted).slice(0, 10);
+  const row = el(`<div class="weave-chip-row"></div>`);
+  shown.forEach(([name, count]) => {
+    row.appendChild(el(`<div class="weave-chip">${escapeHtml(name)}${count > 1 ? `<span class="count">×${count}</span>` : ""}</div>`));
+  });
+  section.appendChild(row);
+
+  if (!repeats.length) {
+    section.appendChild(el(`<p class="weave-empty">${escapeHtml(emptyMsg)}</p>`));
+  }
+  return section;
+}
+
+/* ============================= CAPTURE FLOW ============================= */
+
+function renderCapture() {
+  const state = {
+    type: null,
+    summary: "",
+    context: "",
+    people: "",
+    tags: "",
+    charge: 0,
+    step: 1, // 1 = type + context, 2 = summary + people/tags + charge
+    saving: false,
+    saveError: ""
+  };
+
+  const wrap = el(`<div class="screen"></div>`);
+
+  function draw() {
+    wrap.innerHTML = "";
+
+    const top = el(`
+      <div class="flow-top">
+        <button class="back-btn">${iconSvg('<path d="M15 18l-6-6 6-6"/>', 20)}</button>
+        <span class="step-label">Step ${state.step} of 2</span>
+      </div>
+    `);
+    top.querySelector(".back-btn").addEventListener("click", () => {
+      if (state.step === 1) navigate({ view: "home" });
+      else { state.step = 1; draw(); }
+    });
+    wrap.appendChild(top);
+
+    wrap.appendChild(el(`
+      <div class="progress"><div class="fill" style="width:${state.step === 1 ? 50 : 100}%"></div></div>
+    `));
+
+    if (state.step === 1) drawStep1();
+    else drawStep2();
+  }
+
+  function drawStep1() {
+    wrap.appendChild(el(`<div class="prompt"><h2>What kind of moment was it?</h2></div>`));
+
+    const grid = el(`<div class="types"></div>`);
+    Object.keys(TYPES).filter(k => k !== "unsorted").forEach(key => {
+      const meta = TYPES[key];
+      const card = el(`
+        <button class="type-card${state.type === key ? " selected" : ""}" style="--hue:${meta.hue}">
+          <span class="icon-wrap swatch-icon" style="color:oklch(0.5 0.09 ${meta.hue})">${iconSvg(meta.icon, 16)}</span>
+          <span class="name">${meta.name}</span>
+          <span class="desc">${meta.desc}</span>
+        </button>
+      `);
+      card.addEventListener("click", () => { state.type = key; draw(); });
+      grid.appendChild(card);
+    });
+    const notSure = el(`
+      <button class="type-card not-sure${state.type === "unsorted" ? " selected" : ""}">
+        ${iconSvg(TYPES.unsorted.icon, 15)}
+        <span class="name">Not sure yet — sort it later</span>
+      </button>
+    `);
+    notSure.addEventListener("click", () => { state.type = "unsorted"; draw(); });
+    grid.appendChild(notSure);
+    wrap.appendChild(grid);
+
+    if (state.type) {
+      const meta = TYPES[state.type];
+      const panel = el(`
+        <div class="field-panel" style="--hue:${meta.hue}">
+          <span class="tag">${meta.name}</span>
+          <h3>${meta.prompt}</h3>
+          <textarea placeholder="${meta.placeholder}">${escapeHtml(state.context)}</textarea>
+        </div>
+      `);
+      panel.querySelector("textarea").addEventListener("input", e => { state.context = e.target.value; });
+      wrap.appendChild(panel);
+    } else {
+      wrap.appendChild(el(`<div style="flex:1"></div>`));
+    }
+
+    const ctaRow = el(`<div class="cta-row"><button class="btn solid" ${state.type ? "" : "disabled"}>Continue</button></div>`);
+    ctaRow.querySelector("button").addEventListener("click", () => {
+      if (!state.type) return;
+      state.step = 2;
+      draw();
+    });
+    wrap.appendChild(ctaRow);
+  }
+
+  function drawStep2() {
+    const meta = TYPES[state.type];
+    wrap.appendChild(el(`<div class="prompt"><h2>A sentence or two — the headline.</h2></div>`));
+
+    const panel = el(`
+      <div class="field-panel" style="--hue:${meta.hue}; flex: none;">
+        <span class="tag">${meta.name}</span>
+        <input type="text" placeholder="e.g. Ran into Maya at the coffee shop" value="${escapeAttr(state.summary)}">
+        <label class="small">People (comma-separated)</label>
+        <input type="text" placeholder="e.g. Maya" value="${escapeAttr(state.people)}" id="people-input">
+        <label class="small">Tags (comma-separated)</label>
+        <input type="text" placeholder="e.g. old friends, coffee shop" value="${escapeAttr(state.tags)}" id="tags-input">
+        <label class="small">Charge — how strongly did it land?</label>
+        <div class="charge-row" id="charge-row"></div>
+      </div>
+    `);
+    panel.querySelector('input[type="text"]:nth-of-type(1)').addEventListener("input", e => { state.summary = e.target.value; });
+    panel.querySelector("#people-input").addEventListener("input", e => { state.people = e.target.value; });
+    panel.querySelector("#tags-input").addEventListener("input", e => { state.tags = e.target.value; });
+
+    const chargeRow = panel.querySelector("#charge-row");
+    for (let i = 1; i <= 5; i++) {
+      const dot = el(`<button class="charge-dot${state.charge >= i ? " filled" : ""}"></button>`);
+      dot.addEventListener("click", () => { state.charge = (state.charge === i) ? 0 : i; draw(); });
+      chargeRow.appendChild(dot);
+    }
+    wrap.appendChild(panel);
+
+    wrap.appendChild(el(`<div style="flex:1"></div>`));
+
+    const canSave = state.summary.trim().length > 0 && !state.saving;
+    const ctaRow = el(`
+      <div class="cta-row">
+        <button class="btn solid" ${canSave ? "" : "disabled"}>${state.saving ? "Saving…" : "Save confluence"}</button>
+      </div>
+    `);
+    if (state.saveError) {
+      wrap.appendChild(el(`<p class="error-msg" style="padding:0 24px;color:oklch(0.6 0.15 25)">${escapeHtml(state.saveError)}</p>`));
+    }
+    ctaRow.querySelector("button").addEventListener("click", async () => {
+      if (!canSave) return;
+      state.saving = true; state.saveError = ""; draw();
+      try {
+        const saved = await addEntry({
+          type: state.type,
+          summary: state.summary.trim(),
+          context: state.context.trim(),
+          people: state.people.split(",").map(s => s.trim()).filter(Boolean),
+          tags: state.tags.split(",").map(s => s.trim()).filter(Boolean),
+          charge: state.charge
+        });
+        navigate({ view: "detail", id: saved.id, justSaved: true });
+      } catch (err) {
+        state.saving = false;
+        state.saveError = err.message || String(err);
+        draw();
+      }
+    });
+    wrap.appendChild(ctaRow);
+  }
+
+  draw();
+  return wrap;
+}
+
+/* ============================= QUICK ADD (VOICE) ============================= */
+
+function renderQuickAdd() {
+  const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const wrap = el(`<div class="screen"></div>`);
+
+  if (!SpeechRecognitionCtor) {
+    return renderQuickAddUnsupported(wrap);
+  }
+
+  const state = {
+    phase: "recording", // recording | reviewing | saving
+    transcript: "",
+    interim: "",
+    error: "",
+    saveError: ""
+  };
+
+  let recognition = null;
+
+  function updateLiveTranscript() {
+    const liveEl = wrap.querySelector("#live-transcript");
+    if (liveEl) liveEl.textContent = [state.transcript, state.interim].filter(Boolean).join(" ") || "Listening…";
+  }
+
+  function startRecognition() {
+    recognition = new SpeechRecognitionCtor();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = "en-US";
+
+    recognition.onresult = (event) => {
+      let finalChunk = "";
+      let interimChunk = "";
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        const res = event.results[i];
+        if (res.isFinal) finalChunk += res[0].transcript;
+        else interimChunk += res[0].transcript;
+      }
+      if (finalChunk) state.transcript = (state.transcript + " " + finalChunk).trim();
+      state.interim = interimChunk;
+      updateLiveTranscript();
+    };
+
+    recognition.onerror = (event) => {
+      if (event.error === "no-speech") return; // keep listening quietly
+      state.error = event.error === "not-allowed"
+        ? "Microphone access was denied. Check your browser or site settings and try again."
+        : "Voice capture hit a snag (" + event.error + ").";
+      state.phase = "reviewing";
+      try { recognition.stop(); } catch (e) {}
+      draw();
+    };
+
+    recognition.onend = () => {
+      // The browser can stop listening on its own after a long silence —
+      // if the user hasn't tapped Done yet, just pick it back up.
+      if (state.phase === "recording") {
+        try { recognition.start(); } catch (e) {}
+      }
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      state.error = "Couldn't start the microphone.";
+      state.phase = "reviewing";
+      draw();
+    }
+  }
+
+  function stopRecognition() {
+    state.phase = "reviewing";
+    if (recognition) { try { recognition.stop(); } catch (e) {} }
+    draw();
+  }
+
+  async function save() {
+    const text = state.transcript.trim();
+    if (!text) return;
+    state.phase = "saving"; state.saveError = ""; draw();
+    try {
+      const saved = await addEntry({
+        type: "unsorted",
+        summary: text.length > 90 ? text.slice(0, 87).trim() + "…" : text,
+        context: text,
+        people: [],
+        tags: [],
+        charge: 0,
+        needsReview: true
+      });
+      navigate({ view: "detail", id: saved.id });
+    } catch (err) {
+      state.phase = "reviewing";
+      state.saveError = err.message || String(err);
+      draw();
+    }
+  }
+
+  function draw() {
+    wrap.innerHTML = "";
+
+    const top = el(`
+      <div class="flow-top">
+        <button class="back-btn">${iconSvg('<path d="M15 18l-6-6 6-6"/>', 20)}</button>
+        <span class="step-label">Quick add</span>
+      </div>
+    `);
+    top.querySelector(".back-btn").addEventListener("click", () => {
+      if (recognition) { try { recognition.stop(); } catch (e) {} }
+      navigate({ view: "home" });
+    });
+    wrap.appendChild(top);
+
+    if (state.phase === "recording") {
+      wrap.appendChild(el(`
+        <div class="record-screen">
+          <div class="record-pulse">${iconSvg('<rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0M12 17v4M9 21h6"/>', 30)}</div>
+          <p class="record-hint">Listening — speak your note, then tap Done.</p>
+          <p id="live-transcript" class="live-transcript">Listening…</p>
+        </div>
+      `));
+
+      const ctaRow = el(`
+        <div class="cta-row">
+          <button class="btn ghost">Cancel</button>
+          <button class="btn solid">Done</button>
+        </div>
+      `);
+      ctaRow.querySelector(".btn.ghost").addEventListener("click", () => {
+        if (recognition) { try { recognition.stop(); } catch (e) {} }
+        navigate({ view: "home" });
+      });
+      ctaRow.querySelector(".btn.solid").addEventListener("click", stopRecognition);
+      wrap.appendChild(ctaRow);
+      updateLiveTranscript();
+      return;
+    }
+
+    // reviewing / saving
+    wrap.appendChild(el(`<div class="prompt"><h2>Here's what I heard</h2></div>`));
+    if (state.error) {
+      wrap.appendChild(el(`<p class="error-msg" style="padding:0 24px 8px 24px;color:oklch(0.6 0.15 25)">${escapeHtml(state.error)}</p>`));
+    }
+
+    const panel = el(`
+      <div class="field-panel" style="flex:none;">
+        <label class="small">Edit if anything got mangled</label>
+        <textarea id="transcript-area" placeholder="Nothing came through — type it instead.">${escapeHtml(state.transcript)}</textarea>
+      </div>
+    `);
+    panel.querySelector("textarea").addEventListener("input", e => { state.transcript = e.target.value; });
+    wrap.appendChild(panel);
+
+    if (state.saveError) {
+      wrap.appendChild(el(`<p class="error-msg" style="padding:8px 24px 0 24px;color:oklch(0.6 0.15 25)">${escapeHtml(state.saveError)}</p>`));
+    }
+
+    const canSave = state.transcript.trim().length > 0 && state.phase !== "saving";
+    const ctaRow = el(`
+      <div class="cta-row">
+        <button class="btn ghost" ${state.phase === "saving" ? "disabled" : ""}>Re-record</button>
+        <button class="btn solid" ${canSave ? "" : "disabled"}>${state.phase === "saving" ? "Saving…" : "Save"}</button>
+      </div>
+    `);
+    ctaRow.querySelector(".btn.ghost").addEventListener("click", () => {
+      if (state.phase === "saving") return;
+      state.transcript = "";
+      state.interim = "";
+      state.error = "";
+      state.phase = "recording";
+      draw();
+      startRecognition();
+    });
+    ctaRow.querySelector(".btn.solid").addEventListener("click", save);
+    wrap.appendChild(ctaRow);
+  }
+
+  draw();
+  startRecognition();
+  return wrap;
+}
+
+function renderQuickAddUnsupported(wrap) {
+  const top = el(`
+    <div class="flow-top">
+      <button class="back-btn">${iconSvg('<path d="M15 18l-6-6 6-6"/>', 20)}</button>
+      <span class="step-label">Quick add</span>
+    </div>
+  `);
+  top.querySelector(".back-btn").addEventListener("click", () => navigate({ view: "home" }));
+  wrap.appendChild(top);
+
+  wrap.appendChild(el(`<div class="prompt"><h2>Voice capture isn't available in this browser</h2></div>`));
+
+  const state = { text: "" };
+  const panel = el(`
+    <div class="field-panel" style="flex:none;">
+      <label class="small">Type it instead</label>
+      <textarea placeholder="What happened?"></textarea>
+    </div>
+  `);
+  wrap.appendChild(panel);
+
+  const ctaRow = el(`<div class="cta-row"><button class="btn solid" disabled>Save</button></div>`);
+  const saveBtn = ctaRow.querySelector("button");
+  panel.querySelector("textarea").addEventListener("input", e => {
+    state.text = e.target.value;
+    saveBtn.disabled = state.text.trim().length === 0;
+  });
+  saveBtn.addEventListener("click", async () => {
+    const text = state.text.trim();
+    if (!text) return;
+    saveBtn.disabled = true; saveBtn.textContent = "Saving…";
+    try {
+      const saved = await addEntry({
+        type: "unsorted",
+        summary: text.length > 90 ? text.slice(0, 87).trim() + "…" : text,
+        context: text,
+        people: [],
+        tags: [],
+        charge: 0,
+        needsReview: true
+      });
+      navigate({ view: "detail", id: saved.id });
+    } catch (err) {
+      alert("Couldn't save: " + (err.message || err));
+      saveBtn.disabled = false; saveBtn.textContent = "Save";
+    }
+  });
+  wrap.appendChild(ctaRow);
+  return wrap;
+}
+
+/* ============================= DETAIL ============================= */
+
+function renderDetail(entry, id) {
+  const wrap = el(`<div class="screen"></div>`);
+
+  if (!entry) {
+    wrap.appendChild(el(`<div class="prompt"><h2>That confluence isn't here anymore.</h2></div>`));
+    const back = el(`<div class="cta-row"><button class="btn solid">Back to Home</button></div>`);
+    back.querySelector("button").addEventListener("click", () => navigate({ view: "home" }));
+    wrap.appendChild(back);
+    return wrap;
+  }
+
+  const meta = TYPES[entry.type] || TYPES.unsorted;
+
+  const top = el(`
+    <div class="detail-top" style="--hue:${meta.hue}">
+      <button class="back-btn">${iconSvg('<path d="M15 18l-6-6 6-6"/>', 20)}</button>
+      <span class="pill">${meta.name}</span>
+      <span class="detail-date">${fmtDate(entry.timestamp)}</span>
+    </div>
+  `);
+  top.querySelector(".back-btn").addEventListener("click", () => navigate({ view: "home" }));
+  wrap.appendChild(top);
+
+  const content = el(`<div class="detail-content"></div>`);
+  if (entry.needsReview) {
+    content.appendChild(el(`
+      <div class="review-banner">
+        ${iconSvg('<rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0014 0M12 17v4M9 21h6"/>', 16)}
+        <span>Captured by voice — add a type, tags, or people whenever you're ready.</span>
+      </div>
+    `));
+  }
+  content.appendChild(el(`<h2 class="headline">${escapeHtml(entry.summary)}</h2>`));
+  if (entry.context) {
+    content.appendChild(el(`<p class="context">${escapeHtml(entry.context)}</p>`));
+  }
+
+  if (entry.people.length || entry.tags.length) {
+    const section = el(`<div><p class="section-label">People &amp; tags</p><div class="chip-row"></div></div>`);
+    const row = section.querySelector(".chip-row");
+    entry.people.forEach(p => row.appendChild(el(`<div class="chip person">${iconSvg('<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/>', 12)} ${escapeHtml(p)}</div>`)));
+    entry.tags.forEach(t => row.appendChild(el(`<div class="chip">${escapeHtml(t)}</div>`)));
+    content.appendChild(section);
+  }
+
+  if (entry.charge > 0) {
+    const chargeCard = el(`<div class="charge-card"><p class="section-label">Charge</p><div class="charge-dots"></div></div>`);
+    const dots = chargeCard.querySelector(".charge-dots");
+    for (let i = 1; i <= 5; i++) dots.appendChild(el(`<div class="dot${entry.charge >= i ? " filled" : ""}"></div>`));
+    content.appendChild(chargeCard);
+  }
+
+  wrap.appendChild(content);
+
+  const bottomRow = el(`
+    <div class="bottom-row">
+      <button class="btn btn-edit ${entry.needsReview ? "solid" : "ghost"}">${entry.needsReview ? "Add detail" : "Edit"}</button>
+      <button class="btn danger">Delete</button>
+    </div>
+  `);
+  bottomRow.querySelector(".btn-edit").addEventListener("click", () => navigate({ view: "edit", id: entry.id }));
+  bottomRow.querySelector(".btn.danger").addEventListener("click", async () => {
+    if (confirm("Delete this confluence? This can't be undone.")) {
+      const btn = bottomRow.querySelector(".btn.danger");
+      btn.disabled = true; btn.textContent = "Deleting…";
+      try {
+        await deleteEntry(entry.id);
+        navigate({ view: "home" });
+      } catch (err) {
+        alert("Couldn't delete: " + (err.message || err));
+        btn.disabled = false; btn.textContent = "Delete";
+      }
+    }
+  });
+  wrap.appendChild(bottomRow);
+
+  const captureAgainRow = el(`
+    <div class="bottom-row" style="padding-top:0">
+      <button class="btn solid">Capture another</button>
+    </div>
+  `);
+  captureAgainRow.querySelector("button").addEventListener("click", () => navigate({ view: "capture" }));
+  wrap.appendChild(captureAgainRow);
+
+  return wrap;
+}
+
+/* ============================= EDIT ============================= */
+
+function renderEdit(entry) {
+  const state = {
+    type: entry.type,
+    summary: entry.summary,
+    context: entry.context,
+    people: entry.people.join(", "),
+    tags: entry.tags.join(", "),
+    charge: entry.charge,
+    saving: false,
+    saveError: ""
+  };
+
+  const wrap = el(`<div class="screen"></div>`);
+
+  function draw() {
+    wrap.innerHTML = "";
+    const meta = TYPES[state.type] || TYPES.unsorted;
+
+    const top = el(`
+      <div class="flow-top">
+        <button class="back-btn">${iconSvg('<path d="M15 18l-6-6 6-6"/>', 20)}</button>
+        <span class="step-label">Edit confluence</span>
+      </div>
+    `);
+    top.querySelector(".back-btn").addEventListener("click", () => navigate({ view: "detail", id: entry.id }));
+    wrap.appendChild(top);
+
+    const grid = el(`<div class="types"></div>`);
+    Object.keys(TYPES).filter(k => k !== "unsorted").forEach(key => {
+      const m = TYPES[key];
+      const card = el(`
+        <button class="type-card${state.type === key ? " selected" : ""}" style="--hue:${m.hue}">
+          <span class="icon-wrap swatch-icon" style="color:oklch(0.5 0.09 ${m.hue})">${iconSvg(m.icon, 16)}</span>
+          <span class="name">${m.name}</span>
+          <span class="desc">${m.desc}</span>
+        </button>
+      `);
+      card.addEventListener("click", () => { state.type = key; draw(); });
+      grid.appendChild(card);
+    });
+    const notSure = el(`
+      <button class="type-card not-sure${state.type === "unsorted" ? " selected" : ""}">
+        ${iconSvg(TYPES.unsorted.icon, 15)}
+        <span class="name">Not sure yet — sort it later</span>
+      </button>
+    `);
+    notSure.addEventListener("click", () => { state.type = "unsorted"; draw(); });
+    grid.appendChild(notSure);
+    wrap.appendChild(grid);
+
+    const panel = el(`
+      <div class="field-panel" style="--hue:${meta.hue}; flex: none;">
+        <span class="tag">${meta.name}</span>
+        <label class="small">Headline</label>
+        <input type="text" placeholder="e.g. Ran into Maya at the coffee shop" value="${escapeAttr(state.summary)}" id="summary-input">
+        <label class="small">${meta.prompt}</label>
+        <textarea placeholder="${meta.placeholder}">${escapeHtml(state.context)}</textarea>
+        <label class="small">People (comma-separated)</label>
+        <input type="text" placeholder="e.g. Maya" value="${escapeAttr(state.people)}" id="people-input">
+        <label class="small">Tags (comma-separated)</label>
+        <input type="text" placeholder="e.g. old friends, coffee shop" value="${escapeAttr(state.tags)}" id="tags-input">
+        <label class="small">Charge — how strongly did it land?</label>
+        <div class="charge-row" id="charge-row"></div>
+      </div>
+    `);
+    panel.querySelector("#summary-input").addEventListener("input", e => { state.summary = e.target.value; });
+    panel.querySelector("textarea").addEventListener("input", e => { state.context = e.target.value; });
+    panel.querySelector("#people-input").addEventListener("input", e => { state.people = e.target.value; });
+    panel.querySelector("#tags-input").addEventListener("input", e => { state.tags = e.target.value; });
+
+    const chargeRow = panel.querySelector("#charge-row");
+    for (let i = 1; i <= 5; i++) {
+      const dot = el(`<button class="charge-dot${state.charge >= i ? " filled" : ""}"></button>`);
+      dot.addEventListener("click", () => { state.charge = (state.charge === i) ? 0 : i; draw(); });
+      chargeRow.appendChild(dot);
+    }
+    wrap.appendChild(panel);
+
+    if (state.saveError) {
+      wrap.appendChild(el(`<p class="error-msg" style="padding:12px 24px 0 24px;color:oklch(0.6 0.15 25)">${escapeHtml(state.saveError)}</p>`));
+    }
+
+    const canSave = state.summary.trim().length > 0 && !state.saving;
+    const ctaRow = el(`
+      <div class="cta-row">
+        <button class="btn ghost">Cancel</button>
+        <button class="btn solid" ${canSave ? "" : "disabled"}>${state.saving ? "Saving…" : "Save changes"}</button>
+      </div>
+    `);
+    ctaRow.querySelector(".btn.ghost").addEventListener("click", () => navigate({ view: "detail", id: entry.id }));
+    ctaRow.querySelector(".btn.solid").addEventListener("click", async () => {
+      if (!canSave) return;
+      state.saving = true; state.saveError = ""; draw();
+      try {
+        await updateEntry(entry.id, {
+          type: state.type,
+          summary: state.summary.trim(),
+          context: state.context.trim(),
+          people: state.people.split(",").map(s => s.trim()).filter(Boolean),
+          tags: state.tags.split(",").map(s => s.trim()).filter(Boolean),
+          charge: state.charge
+        });
+        navigate({ view: "detail", id: entry.id });
+      } catch (err) {
+        state.saving = false;
+        state.saveError = err.message || String(err);
+        draw();
+      }
+    });
+    wrap.appendChild(ctaRow);
+  }
+
+  draw();
+  return wrap;
+}
+
+/* ============================= UTIL ============================= */
+
+function escapeHtml(str) {
+  return String(str).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+function escapeAttr(str) { return escapeHtml(str); }
+
+/* ============================= BOOT ============================= */
+
+initAuth().then(render);
+</script>
+</body>
+</html>
