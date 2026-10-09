@@ -509,6 +509,119 @@
   }
   .weave-chip .count { font-size: 11px; opacity: 0.65; }
   .weave-empty { font-size: 13.5px; color: var(--card-ink-dim); line-height: 1.6; margin: 0; }
+
+  /* ---------- Threads ---------- */
+  .new-thread-row {
+    margin: 0 20px 20px 20px;
+    display: flex;
+    gap: 8px;
+  }
+  .new-thread-row input[type=text] {
+    flex: 1;
+    border: 1px solid oklch(1 0 0 / 0.16);
+    border-radius: 12px;
+    background: oklch(1 0 0 / 0.06);
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 14px;
+    padding: 12px 14px;
+    outline: none;
+  }
+  .new-thread-row input[type=text]::placeholder { color: var(--ink-faint); }
+  .new-thread-row button {
+    flex-shrink: 0;
+    width: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, var(--accent-1), var(--accent-2));
+    color: oklch(0.2 0.03 50);
+    border: none;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+  }
+  .new-thread-row button:disabled { opacity: 0.45; cursor: default; }
+
+  .thread-card {
+    background: var(--card);
+    color: var(--card-ink);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+    width: 100%;
+  }
+  .thread-card:hover { filter: brightness(0.99); }
+  .thread-card .body { flex: 1; min-width: 0; }
+  .thread-card .title { font-family: 'Source Serif 4', serif; font-size: 15px; line-height: 1.35; margin: 0; }
+  .thread-card .meta { font-size: 11.5px; color: var(--card-ink-dim); margin-top: 5px; }
+  .thread-status-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .thread-status-dot.open { background: oklch(0.7 0.14 145); }
+  .thread-status-dot.resolved { background: oklch(0.65 0.02 50); }
+  .thread-card.resolved { opacity: 0.68; }
+  .thread-card.resolved .title { text-decoration: line-through; }
+
+  .thread-list { padding: 0 20px 24px 20px; display: flex; flex-direction: column; gap: 10px; }
+
+  .thread-select-wrap { display: flex; flex-direction: column; gap: 6px; }
+  select.thread-select {
+    width: 100%;
+    border: 1px solid var(--card-ink-dim);
+    border-radius: 10px;
+    background: oklch(1 0 0 / 0.5);
+    font-family: 'Work Sans', sans-serif;
+    font-size: 14px;
+    color: var(--card-ink);
+    padding: 10px 12px;
+    outline: none;
+  }
+
+  /* ---------- Settings ---------- */
+  .settings-card {
+    margin: 0 20px 16px 20px;
+    background: var(--card);
+    color: var(--card-ink);
+    border-radius: 18px;
+    padding: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .settings-card .section-label { color: var(--card-ink-dim); margin: 0 0 6px 0; }
+  .settings-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid oklch(0.3 0.03 50 / 0.12);
+    font-size: 14px;
+  }
+  .settings-row:last-child { border-bottom: none; }
+  .settings-row .k { color: var(--card-ink-dim); }
+  .settings-row .v { font-weight: 600; }
+  .settings-action-row {
+    margin: 0 20px 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-radius: 16px;
+    background: oklch(1 0 0 / 0.06);
+    border: 1px solid oklch(1 0 0 / 0.1);
+    cursor: pointer;
+    text-align: left;
+    color: var(--ink);
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    width: calc(100% - 40px);
+  }
+  .settings-action-row:hover { background: oklch(1 0 0 / 0.1); }
+  .settings-action-row.danger { color: oklch(0.75 0.1 25); }
+  .settings-footer { text-align: center; padding: 18px 24px 40px 24px; font-size: 12px; color: var(--ink-faint); line-height: 1.6; }
 </style>
 </head>
 <body>
@@ -613,6 +726,7 @@ async function addEntry(entry) {
       people: entry.people,
       tags: entry.tags,
       charge: entry.charge,
+      thread_id: entry.threadId || null,
       needs_review: entry.needsReview || false
     })
     .select()
@@ -639,6 +753,7 @@ async function updateEntry(id, patch) {
       people: patch.people,
       tags: patch.tags,
       charge: patch.charge,
+      thread_id: patch.threadId !== undefined ? patch.threadId : null,
       needs_review: false // saving through the edit screen counts as "finished"
     })
     .eq("id", id)
@@ -652,6 +767,79 @@ async function updateEntry(id, patch) {
 
 function getEntry(id) {
   return cache.find(e => e.id === id);
+}
+
+/* ============================= THREADS DATA ============================= */
+
+let threadCache = [];
+
+function rowToThread(row) {
+  return {
+    id: row.id,
+    createdAt: new Date(row.created_at).getTime(),
+    title: row.title,
+    status: row.status,
+    resolvedAt: row.resolved_at ? new Date(row.resolved_at).getTime() : null,
+    resolvedBy: row.resolved_by || null
+  };
+}
+
+async function loadThreads() {
+  const { data, error } = await supabase
+    .from("threads")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  threadCache = data.map(rowToThread);
+  return threadCache;
+}
+
+async function addThread(title) {
+  const { data, error } = await supabase
+    .from("threads")
+    .insert({ title, status: "open" })
+    .select()
+    .single();
+  if (error) throw error;
+  const saved = rowToThread(data);
+  threadCache = [saved, ...threadCache];
+  return saved;
+}
+
+async function resolveThread(id, resolvedBy) {
+  const { data, error } = await supabase
+    .from("threads")
+    .update({ status: "resolved", resolved_at: new Date().toISOString(), resolved_by: resolvedBy || null })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  const updated = rowToThread(data);
+  threadCache = threadCache.map(t => (t.id === id ? updated : t));
+  return updated;
+}
+
+async function reopenThread(id) {
+  const { data, error } = await supabase
+    .from("threads")
+    .update({ status: "open", resolved_at: null, resolved_by: null })
+    .eq("id", id)
+    .select()
+    .single();
+  if (error) throw error;
+  const updated = rowToThread(data);
+  threadCache = threadCache.map(t => (t.id === id ? updated : t));
+  return updated;
+}
+
+async function deleteThread(id) {
+  const { error } = await supabase.from("threads").delete().eq("id", id);
+  if (error) throw error;
+  threadCache = threadCache.filter(t => t.id !== id);
+}
+
+function getThread(id) {
+  return threadCache.find(t => t.id === id);
 }
 
 /* ============================= AUTH ============================= */
@@ -760,6 +948,38 @@ async function render() {
     } catch (err) {
       app.innerHTML = "";
       app.appendChild(renderErrorScreen(err, () => navigate({ view: "weave" })));
+    }
+  } else if (route.view === "threads") {
+    app.appendChild(renderCenteredMessage({ loading: true, text: "Gathering your threads…" }));
+    try {
+      const [threads, entries] = await Promise.all([loadThreads(), loadEntries()]);
+      app.innerHTML = "";
+      app.appendChild(renderThreads(threads, entries));
+    } catch (err) {
+      app.innerHTML = "";
+      app.appendChild(renderErrorScreen(err, () => navigate({ view: "threads" })));
+    }
+  } else if (route.view === "threaddetail") {
+    app.appendChild(renderCenteredMessage({ loading: true, text: "Opening thread…" }));
+    try {
+      const [threads, entries] = await Promise.all([loadThreads(), loadEntries()]);
+      app.innerHTML = "";
+      const thread = threads.find(t => t.id === route.id);
+      const linked = entries.filter(e => e.threadId === route.id);
+      app.appendChild(renderThreadDetail(thread, linked, route.id));
+    } catch (err) {
+      app.innerHTML = "";
+      app.appendChild(renderErrorScreen(err, () => navigate({ view: "threaddetail", id: route.id })));
+    }
+  } else if (route.view === "settings") {
+    app.appendChild(renderCenteredMessage({ loading: true, text: "Loading settings…" }));
+    try {
+      const [entries, threads] = await Promise.all([loadEntries(), loadThreads()]);
+      app.innerHTML = "";
+      app.appendChild(renderSettings(entries, threads));
+    } catch (err) {
+      app.innerHTML = "";
+      app.appendChild(renderErrorScreen(err, () => navigate({ view: "settings" })));
     }
   }
 }
@@ -953,7 +1173,8 @@ function renderNav(active) {
     `);
     if (it.id === "home") btn.addEventListener("click", () => navigate({ view: "home" }));
     else if (it.id === "weave") btn.addEventListener("click", () => navigate({ view: "weave" }));
-    else btn.addEventListener("click", () => alert(it.label + " isn't wired up in this prototype yet."));
+    else if (it.id === "threads") btn.addEventListener("click", () => navigate({ view: "threads" }));
+    else if (it.id === "settings") btn.addEventListener("click", () => navigate({ view: "settings" }));
     nav.appendChild(btn);
   });
   return nav;
@@ -1074,6 +1295,283 @@ function renderRecurrenceSection(title, counts, emptyMsg) {
   return section;
 }
 
+/* ============================= THREADS ============================= */
+
+function renderThreads(threads, entries) {
+  const wrap = el(`<div class="screen"></div>`);
+
+  const counts = {};
+  entries.forEach(e => { if (e.threadId) counts[e.threadId] = (counts[e.threadId] || 0) + 1; });
+
+  const open = threads.filter(t => t.status === "open");
+  const resolved = threads.filter(t => t.status === "resolved");
+
+  wrap.appendChild(el(`
+    <div>
+      <p class="wordmark">Confluence</p>
+      <div class="topbar">
+        <div>
+          <h1>Threads</h1>
+          <p class="sub">${open.length} open &middot; ${resolved.length} resolved</p>
+        </div>
+      </div>
+    </div>
+  `));
+
+  const newRow = el(`
+    <div class="new-thread-row">
+      <input type="text" placeholder="What question or decision is open?" id="new-thread-input">
+      <button disabled>${iconSvg('<path d="M12 5v14M5 12h14"/>', 18)}</button>
+    </div>
+  `);
+  const input = newRow.querySelector("input");
+  const addBtn = newRow.querySelector("button");
+  input.addEventListener("input", () => { addBtn.disabled = input.value.trim().length === 0; });
+  input.addEventListener("keydown", e => { if (e.key === "Enter" && !addBtn.disabled) addBtn.click(); });
+  addBtn.addEventListener("click", async () => {
+    const title = input.value.trim();
+    if (!title) return;
+    addBtn.disabled = true;
+    try {
+      await addThread(title);
+      navigate({ view: "threads" });
+    } catch (err) {
+      alert("Couldn't start that thread: " + (err.message || err));
+      addBtn.disabled = false;
+    }
+  });
+  wrap.appendChild(newRow);
+
+  if (!threads.length) {
+    wrap.appendChild(el(`<div class="empty-state">No threads yet.<br>Start one for a question or decision you're sitting with — then link confluences to it as they come.</div>`));
+  } else {
+    if (open.length) {
+      wrap.appendChild(el(`<p class="feed-label">Open</p>`));
+      const list = el(`<div class="thread-list"></div>`);
+      open.forEach(t => list.appendChild(renderThreadCard(t, counts[t.id] || 0)));
+      wrap.appendChild(list);
+    }
+    if (resolved.length) {
+      wrap.appendChild(el(`<p class="feed-label">Resolved</p>`));
+      const list = el(`<div class="thread-list"></div>`);
+      resolved.forEach(t => list.appendChild(renderThreadCard(t, counts[t.id] || 0)));
+      wrap.appendChild(list);
+    }
+  }
+
+  wrap.appendChild(renderNav("threads"));
+  return wrap;
+}
+
+function renderThreadCard(thread, count) {
+  const card = el(`
+    <button class="thread-card${thread.status === "resolved" ? " resolved" : ""}">
+      <span class="thread-status-dot ${thread.status}"></span>
+      <span class="body">
+        <p class="title">${escapeHtml(thread.title)}</p>
+        <p class="meta">${count} confluence${count === 1 ? "" : "s"} linked &middot; ${fmtDate(thread.createdAt)}</p>
+      </span>
+    </button>
+  `);
+  card.addEventListener("click", () => navigate({ view: "threaddetail", id: thread.id }));
+  return card;
+}
+
+function renderThreadDetail(thread, linkedEntries, id) {
+  const wrap = el(`<div class="screen"></div>`);
+
+  if (!thread) {
+    wrap.appendChild(el(`<div class="prompt"><h2>That thread isn't here anymore.</h2></div>`));
+    const back = el(`<div class="cta-row"><button class="btn solid">Back to Threads</button></div>`);
+    back.querySelector("button").addEventListener("click", () => navigate({ view: "threads" }));
+    wrap.appendChild(back);
+    return wrap;
+  }
+
+  const top = el(`
+    <div class="detail-top" style="--hue:${thread.status === "open" ? 145 : 50}">
+      <button class="back-btn">${iconSvg('<path d="M15 18l-6-6 6-6"/>', 20)}</button>
+      <span class="pill">${thread.status === "open" ? "Open" : "Resolved"}</span>
+      <span class="detail-date">${fmtDate(thread.createdAt)}</span>
+    </div>
+  `);
+  top.querySelector(".back-btn").addEventListener("click", () => navigate({ view: "threads" }));
+  wrap.appendChild(top);
+
+  const content = el(`<div class="detail-content"></div>`);
+  content.appendChild(el(`<h2 class="headline">${escapeHtml(thread.title)}</h2>`));
+
+  const section = el(`<div><p class="section-label">Linked confluences</p></div>`);
+  if (linkedEntries.length) {
+    const feed = el(`<div class="feed" style="padding:0"></div>`);
+    linkedEntries.forEach(entry => feed.appendChild(renderCard(entry)));
+    section.appendChild(feed);
+  } else {
+    section.appendChild(el(`<p class="weave-empty" style="color:var(--ink-dim)">Nothing linked yet. When you capture or edit a confluence, attach it to this thread.</p>`));
+  }
+  content.appendChild(section);
+  wrap.appendChild(content);
+
+  const bottomRow = el(`<div class="bottom-row"></div>`);
+  if (thread.status === "open") {
+    const resolveBtn = el(`<button class="btn solid">Mark resolved</button>`);
+    resolveBtn.addEventListener("click", async () => {
+      resolveBtn.disabled = true; resolveBtn.textContent = "Resolving…";
+      try {
+        await resolveThread(thread.id);
+        navigate({ view: "threaddetail", id: thread.id });
+      } catch (err) {
+        alert("Couldn't resolve: " + (err.message || err));
+        resolveBtn.disabled = false; resolveBtn.textContent = "Mark resolved";
+      }
+    });
+    bottomRow.appendChild(resolveBtn);
+  } else {
+    const reopenBtn = el(`<button class="btn ghost">Reopen</button>`);
+    reopenBtn.addEventListener("click", async () => {
+      reopenBtn.disabled = true; reopenBtn.textContent = "Reopening…";
+      try {
+        await reopenThread(thread.id);
+        navigate({ view: "threaddetail", id: thread.id });
+      } catch (err) {
+        alert("Couldn't reopen: " + (err.message || err));
+        reopenBtn.disabled = false; reopenBtn.textContent = "Reopen";
+      }
+    });
+    bottomRow.appendChild(reopenBtn);
+  }
+  const deleteBtn = el(`<button class="btn danger">Delete</button>`);
+  deleteBtn.addEventListener("click", async () => {
+    if (confirm("Delete this thread? Linked confluences stay, just unlinked.")) {
+      deleteBtn.disabled = true; deleteBtn.textContent = "Deleting…";
+      try {
+        await deleteThread(thread.id);
+        navigate({ view: "threads" });
+      } catch (err) {
+        alert("Couldn't delete: " + (err.message || err));
+        deleteBtn.disabled = false; deleteBtn.textContent = "Delete";
+      }
+    }
+  });
+  bottomRow.appendChild(deleteBtn);
+  wrap.appendChild(bottomRow);
+
+  return wrap;
+}
+
+/* Shared thread-picker used by Capture and Edit, so confluences can be linked
+   to an open thread as they're captured. */
+function renderThreadSelectField(openThreads, selectedId, onChange) {
+  const wrapDiv = el(`<div class="thread-select-wrap"></div>`);
+  wrapDiv.appendChild(el(`<label class="small">Part of a thread? (optional)</label>`));
+  const select = el(`<select class="thread-select"></select>`);
+  select.appendChild(el(`<option value="">No thread</option>`));
+  openThreads.forEach(t => {
+    const opt = el(`<option value="${escapeAttr(t.id)}">${escapeHtml(t.title)}</option>`);
+    if (t.id === selectedId) opt.setAttribute("selected", "selected");
+    select.appendChild(opt);
+  });
+  select.appendChild(el(`<option value="__new__">+ Start a new thread…</option>`));
+  select.addEventListener("change", async () => {
+    if (select.value === "__new__") {
+      const title = prompt("What question or decision is this part of?");
+      if (title && title.trim()) {
+        try {
+          const thread = await addThread(title.trim());
+          onChange(thread.id, [thread, ...openThreads]);
+          return;
+        } catch (err) {
+          alert("Couldn't start that thread: " + (err.message || err));
+        }
+      }
+      select.value = selectedId || "";
+      return;
+    }
+    onChange(select.value || null, openThreads);
+  });
+  wrapDiv.appendChild(select);
+  return wrapDiv;
+}
+
+/* ============================= SETTINGS ============================= */
+
+function renderSettings(entries, threads) {
+  const wrap = el(`<div class="screen"></div>`);
+
+  wrap.appendChild(el(`
+    <div>
+      <p class="wordmark">Confluence</p>
+      <div class="topbar">
+        <div><h1>Settings</h1></div>
+      </div>
+    </div>
+  `));
+
+  const email = session && session.user ? session.user.email : "";
+  const openThreads = threads.filter(t => t.status === "open").length;
+  const firstEntry = entries.length ? entries[entries.length - 1] : null;
+
+  const account = el(`
+    <div class="settings-card">
+      <p class="section-label">Account</p>
+      <div class="settings-row"><span class="k">Signed in as</span><span class="v">${escapeHtml(email)}</span></div>
+    </div>
+  `);
+  wrap.appendChild(account);
+
+  const stats = el(`
+    <div class="settings-card">
+      <p class="section-label">Your data</p>
+      <div class="settings-row"><span class="k">Confluences logged</span><span class="v">${entries.length}</span></div>
+      <div class="settings-row"><span class="k">Open threads</span><span class="v">${openThreads}</span></div>
+      <div class="settings-row"><span class="k">First confluence</span><span class="v">${firstEntry ? fmtDate(firstEntry.timestamp) : "—"}</span></div>
+    </div>
+  `);
+  wrap.appendChild(stats);
+
+  const exportRow = el(`
+    <button class="settings-action-row">
+      ${iconSvg('<path d="M12 3v12M7 10l5 5 5-5"/><path d="M5 21h14"/>', 18)}
+      <span>Export your data (JSON)</span>
+    </button>
+  `);
+  exportRow.addEventListener("click", () => {
+    const payload = {
+      exportedAt: new Date().toISOString(),
+      confluences: entries,
+      threads
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `confluence-export-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+  wrap.appendChild(exportRow);
+
+  const signOutRow = el(`
+    <button class="settings-action-row danger">
+      ${iconSvg('<path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/>', 18)}
+      <span>Sign out</span>
+    </button>
+  `);
+  signOutRow.addEventListener("click", async () => {
+    if (confirm("Sign out of Confluence?")) await signOut();
+  });
+  wrap.appendChild(signOutRow);
+
+  wrap.appendChild(el(`
+    <p class="settings-footer">Confluence — a utility for serendipity.<br>Your data lives in your own Supabase project; nobody else can read it.</p>
+  `));
+
+  wrap.appendChild(renderNav("settings"));
+  return wrap;
+}
+
 /* ============================= CAPTURE FLOW ============================= */
 
 function renderCapture() {
@@ -1084,12 +1582,19 @@ function renderCapture() {
     people: "",
     tags: "",
     charge: 0,
+    threadId: null,
+    openThreads: [],
     step: 1, // 1 = type + context, 2 = summary + people/tags + charge
     saving: false,
     saveError: ""
   };
 
   const wrap = el(`<div class="screen"></div>`);
+
+  loadThreads().then(threads => {
+    state.openThreads = threads.filter(t => t.status === "open");
+    if (state.step === 2) draw();
+  }).catch(() => {});
 
   function draw() {
     wrap.innerHTML = "";
@@ -1190,6 +1695,11 @@ function renderCapture() {
       dot.addEventListener("click", () => { state.charge = (state.charge === i) ? 0 : i; draw(); });
       chargeRow.appendChild(dot);
     }
+    panel.appendChild(renderThreadSelectField(state.openThreads, state.threadId, (threadId, updatedThreads) => {
+      state.threadId = threadId;
+      state.openThreads = updatedThreads;
+      draw();
+    }));
     wrap.appendChild(panel);
 
     wrap.appendChild(el(`<div style="flex:1"></div>`));
@@ -1213,7 +1723,8 @@ function renderCapture() {
           context: state.context.trim(),
           people: state.people.split(",").map(s => s.trim()).filter(Boolean),
           tags: state.tags.split(",").map(s => s.trim()).filter(Boolean),
-          charge: state.charge
+          charge: state.charge,
+          threadId: state.threadId
         });
         navigate({ view: "detail", id: saved.id, justSaved: true });
       } catch (err) {
@@ -1562,11 +2073,18 @@ function renderEdit(entry) {
     people: entry.people.join(", "),
     tags: entry.tags.join(", "),
     charge: entry.charge,
+    threadId: entry.threadId || null,
+    openThreads: [],
     saving: false,
     saveError: ""
   };
 
   const wrap = el(`<div class="screen"></div>`);
+
+  loadThreads().then(threads => {
+    state.openThreads = threads.filter(t => t.status === "open" || t.id === state.threadId);
+    draw();
+  }).catch(() => {});
 
   function draw() {
     wrap.innerHTML = "";
@@ -1630,6 +2148,11 @@ function renderEdit(entry) {
       dot.addEventListener("click", () => { state.charge = (state.charge === i) ? 0 : i; draw(); });
       chargeRow.appendChild(dot);
     }
+    panel.appendChild(renderThreadSelectField(state.openThreads, state.threadId, (threadId, updatedThreads) => {
+      state.threadId = threadId;
+      state.openThreads = updatedThreads;
+      draw();
+    }));
     wrap.appendChild(panel);
 
     if (state.saveError) {
@@ -1654,7 +2177,8 @@ function renderEdit(entry) {
           context: state.context.trim(),
           people: state.people.split(",").map(s => s.trim()).filter(Boolean),
           tags: state.tags.split(",").map(s => s.trim()).filter(Boolean),
-          charge: state.charge
+          charge: state.charge,
+          threadId: state.threadId
         });
         navigate({ view: "detail", id: entry.id });
       } catch (err) {
