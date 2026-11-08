@@ -868,6 +868,7 @@ async function signUp(email, password) {
 
 async function signOut() {
   await supabase.auth.signOut();
+  clearSavedRoute();
 }
 
 /* ============================= HELPERS ============================= */
@@ -899,10 +900,41 @@ function iconSvg(pathMarkup, size = 18) {
 
 const app = document.getElementById("app");
 
-let route = { view: "home" };
+/* A fresh browser tab always runs this script from scratch, so in-memory
+   state like `route` starts over at Home even though login (saved by
+   Supabase to localStorage) survives. Persisting the last *stable* screen to
+   localStorage — shared across tabs/windows on the same origin, unlike
+   sessionStorage — lets a new tab pick up where the last one left off.
+   Transient flows (capture, edit, quick add) are deliberately excluded so a
+   fresh tab never reopens mid-form or re-triggers the microphone. */
+const LAST_ROUTE_KEY = "confluence:lastRoute";
+const PERSISTABLE_VIEWS = new Set(["home", "detail", "threads", "threaddetail", "weave", "settings"]);
+
+function loadSavedRoute() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(LAST_ROUTE_KEY));
+    if (saved && PERSISTABLE_VIEWS.has(saved.view)) return saved;
+  } catch (e) {}
+  return { view: "home" };
+}
+
+function saveRoute(next) {
+  try {
+    if (PERSISTABLE_VIEWS.has(next.view)) {
+      localStorage.setItem(LAST_ROUTE_KEY, JSON.stringify({ view: next.view, id: next.id || null }));
+    }
+  } catch (e) {}
+}
+
+function clearSavedRoute() {
+  try { localStorage.removeItem(LAST_ROUTE_KEY); } catch (e) {}
+}
+
+let route = loadSavedRoute();
 
 async function navigate(next) {
   route = next;
+  saveRoute(next);
   window.scrollTo(0, 0);
   await render();
 }
@@ -932,7 +964,20 @@ async function render() {
   } else if (route.view === "capture") {
     app.appendChild(renderCapture());
   } else if (route.view === "detail") {
-    app.appendChild(renderDetail(getEntry(route.id), route.id));
+    if (cache.length) {
+      app.appendChild(renderDetail(getEntry(route.id), route.id));
+    } else {
+      // A fresh tab restoring straight into Detail hasn't loaded entries yet.
+      app.appendChild(renderCenteredMessage({ loading: true, text: "Gathering your confluences…" }));
+      try {
+        await loadEntries();
+        app.innerHTML = "";
+        app.appendChild(renderDetail(getEntry(route.id), route.id));
+      } catch (err) {
+        app.innerHTML = "";
+        app.appendChild(renderErrorScreen(err, () => navigate({ view: "detail", id: route.id })));
+      }
+    }
   } else if (route.view === "edit") {
     const entry = getEntry(route.id);
     if (!entry) { app.appendChild(renderDetail(entry, route.id)); return; }
