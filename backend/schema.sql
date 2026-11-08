@@ -74,3 +74,25 @@ create policy "threads_update_own" on threads
 drop policy if exists "threads_delete_own" on threads;
 create policy "threads_delete_own" on threads
   for delete using (auth.uid() = user_id);
+
+-- Access requests: Confluence is invite-only, so there's no public sign-up.
+-- Someone without an account can submit their email from the sign-in screen
+-- to ask for one. Anyone (anon) may INSERT a request, but there is no
+-- SELECT/UPDATE/DELETE policy on this table, so submitted requests can only
+-- be read or managed from the Supabase dashboard (which uses the service
+-- role and bypasses RLS) — never through the app's anon key. Review pending
+-- requests in Table Editor > access_requests, and invite people you want in
+-- from Authentication > Users > Invite user.
+create table if not exists access_requests (
+  id uuid primary key default gen_random_uuid(),
+  created_at timestamptz not null default now(),
+  email text not null,
+  note text not null default '',
+  status text not null default 'pending' check (status in ('pending', 'invited', 'declined'))
+);
+
+alter table access_requests enable row level security;
+
+drop policy if exists "access_requests_insert_anyone" on access_requests;
+create policy "access_requests_insert_anyone" on access_requests
+  for insert with check (true);

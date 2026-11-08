@@ -861,8 +861,10 @@ async function signIn(email, password) {
   if (error) throw error;
 }
 
-async function signUp(email, password) {
-  const { error } = await supabase.auth.signUp({ email, password });
+async function requestAccess(email, note) {
+  const { error } = await supabase
+    .from("access_requests")
+    .insert({ email, note: note || "" });
   if (error) throw error;
 }
 
@@ -1063,47 +1065,85 @@ function renderConfigNeeded() {
 }
 
 function renderAuth() {
-  const state = { mode: "signin", email: "", password: "", error: "", busy: false };
+  // Confluence is invite-only: there's no public sign-up here. Someone
+  // without an account can ask for one ("Request access"), which just
+  // records their email for you to review in the Supabase dashboard —
+  // inviting them is a separate, deliberate step you take there.
+  const state = { mode: "signin", email: "", password: "", note: "", error: "", busy: false };
   const wrap = el(`<div class="centered-screen"></div>`);
 
   function draw() {
     wrap.innerHTML = "";
     wrap.appendChild(el(`<p class="mark">Confluence</p>`));
 
+    if (state.mode === "sent") {
+      const sentCard = el(`
+        <div class="auth-card" style="text-align:center">
+          <h2>Request sent</h2>
+          <p class="msg" style="margin:0">You'll get an email if you're invited. Nothing else to do for now.</p>
+          <button class="btn ghost" style="width:100%;margin-top:6px">Back to sign in</button>
+        </div>
+      `);
+      sentCard.querySelector("button").addEventListener("click", () => {
+        state.mode = "signin"; state.email = ""; state.note = ""; state.error = "";
+        draw();
+      });
+      wrap.appendChild(sentCard);
+      return;
+    }
+
+    const isRequest = state.mode === "request";
     const card = el(`
       <div class="auth-card">
-        <h2>${state.mode === "signin" ? "Welcome back" : "Create your account"}</h2>
+        <h2>${isRequest ? "Request access" : "Welcome back"}</h2>
         <label class="small">Email</label>
         <input type="email" id="auth-email" autocomplete="email" value="${escapeAttr(state.email)}">
-        <label class="small">Password</label>
-        <input type="password" id="auth-password" autocomplete="${state.mode === "signin" ? "current-password" : "new-password"}" value="${escapeAttr(state.password)}">
+        ${isRequest ? `
+          <label class="small">What's your connection? (optional)</label>
+          <textarea id="auth-note" placeholder="How you know me / why you'd like in" style="min-height:70px">${escapeHtml(state.note)}</textarea>
+        ` : `
+          <label class="small">Password</label>
+          <input type="password" id="auth-password" autocomplete="current-password" value="${escapeAttr(state.password)}">
+        `}
         <p class="error-msg">${escapeHtml(state.error)}</p>
-        <button class="btn solid" ${state.busy ? "disabled" : ""}>${state.busy ? "One moment…" : (state.mode === "signin" ? "Sign in" : "Sign up")}</button>
-        <p class="switch-link">${state.mode === "signin" ? "Need an account? Sign up" : "Already have an account? Sign in"}</p>
+        <button class="btn solid" ${state.busy ? "disabled" : ""}>${state.busy ? "One moment…" : (isRequest ? "Send request" : "Sign in")}</button>
+        <p class="switch-link">${isRequest ? "Already have an account? Sign in" : "Need access? Request an invite"}</p>
       </div>
     `);
     card.querySelector("#auth-email").addEventListener("input", e => { state.email = e.target.value; });
-    card.querySelector("#auth-password").addEventListener("input", e => { state.password = e.target.value; });
+    if (isRequest) {
+      card.querySelector("#auth-note").addEventListener("input", e => { state.note = e.target.value; });
+    } else {
+      card.querySelector("#auth-password").addEventListener("input", e => { state.password = e.target.value; });
+    }
     card.querySelector(".switch-link").addEventListener("click", () => {
-      state.mode = state.mode === "signin" ? "signup" : "signin";
+      state.mode = isRequest ? "signin" : "request";
       state.error = "";
       draw();
     });
     card.querySelector(".btn.solid").addEventListener("click", async () => {
-      if (!state.email || !state.password) { state.error = "Enter an email and password."; draw(); return; }
-      state.busy = true; state.error = ""; draw();
-      try {
-        if (state.mode === "signin") await signIn(state.email, state.password);
-        else {
-          await signUp(state.email, state.password);
-          state.error = "Check your email to confirm your account, then sign in.";
-          state.mode = "signin";
+      if (isRequest) {
+        if (!state.email) { state.error = "Enter an email so I know where to send the invite."; draw(); return; }
+        state.busy = true; state.error = ""; draw();
+        try {
+          await requestAccess(state.email.trim(), state.note.trim());
+          state.mode = "sent";
+        } catch (err) {
+          state.error = err.message || String(err);
         }
-      } catch (err) {
-        state.error = err.message || String(err);
+        state.busy = false;
+        draw();
+      } else {
+        if (!state.email || !state.password) { state.error = "Enter an email and password."; draw(); return; }
+        state.busy = true; state.error = ""; draw();
+        try {
+          await signIn(state.email, state.password);
+        } catch (err) {
+          state.error = err.message || String(err);
+        }
+        state.busy = false;
+        draw();
       }
-      state.busy = false;
-      draw();
     });
     wrap.appendChild(card);
   }
